@@ -1,0 +1,6 @@
+.git
+.gitignore
+frontend
+meta
+*.out
+*.test

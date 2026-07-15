@@ -1,0 +1,121 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: infraops-server-config
+data:
+  server.yaml: |
+    RPCAddress: ":8085"
+    HTTPAddress: ":8086"
+    mysql:
+      - name: stree
+        addr: "${INFRAOPS_MYSQL_DSN}"
+        max: 32
+        idle: 8
+        debug: false
+    publicCloudAssetSync:
+      enabled: false
+    invertedIndex:
+      - resource_name: resource_host
+        enabled: true
+        modulus: 0
+        num: 0
+    probe:
+      - type: tcp
+        region: external
+        interval_seconds: 15
+        timeout_seconds: 5
+        target:
+          - example.com:443
+      - type: dns
+        region: external
+        interval_seconds: 30
+        timeout_seconds: 5
+        target:
+          - example.com
+      - type: tls
+        region: external
+        interval_seconds: 30
+        timeout_seconds: 8
+        target:
+          - example.com:443
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: infraops-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: infraops-server
+  template:
+    metadata:
+      labels:
+        app: infraops-server
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8086"
+        prometheus.io/path: /metrics
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: server
+          image: infraops-server:latest
+          imagePullPolicy: IfNotPresent
+          args:
+            - -configFile=/etc/infraops/server.yaml
+          env:
+            - name: INFRAOPS_MYSQL_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: infraops-server-secrets
+                  key: mysql-dsn
+          ports:
+            - name: rpc
+              containerPort: 8085
+            - name: http
+              containerPort: 8086
+          readinessProbe:
+            httpGet:
+              path: /apis/v1/ping
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /apis/v1/ping
+              port: http
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/infraops
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: infraops-server-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: infraops-server
+spec:
+  selector:
+    app: infraops-server
+  ports:
+    - name: rpc
+      port: 8085
+      targetPort: rpc
+    - name: http
+      port: 8086
+      targetPort: http

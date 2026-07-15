@@ -1,0 +1,21 @@
+RPCServerAddress: "0.0.0.0:8085"
+HTTPAddress: "0.0.0.0:8087"
+log: false
+logLevel: INFO
+collectAndReport: false
+logStrategies:
+  - metric_name: ngx_acc_code
+    metric_help: nginx access
+    file_path: /var/log/nginx/access.log
+    pattern:  ".*"
+    func: cnt
+  - metric_name: ngx_err_code
+    metric_help: nginx code
+    file_path: /var/log/nginx/error.log
+    pattern: '.*\[code=(.*?)\].*'
+    func: avg
+task:
+  metaDir: ./meta
+  interval: 2
+
+region: bj01

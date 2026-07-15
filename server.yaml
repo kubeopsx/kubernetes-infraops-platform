@@ -1,0 +1,30 @@
+RPCAddress: ":8085"
+HTTPAddress: ":8086"
+
+mysql:
+- name: stree
+  addr: "root:root@tcp(192.168.15.155:3306)/infraops?charset=utf8&parseTime=True"
+  max: 128
+  idle: 16
+  debug: false
+
+publicCloudAssetSync:
+  enabled: false
+
+invertedIndex:
+- resource_name: resource_host
+  enabled: true
+  modulus: 0
+  num: 0
+
+probe:
+- type: icmp
+  region: region1
+  target:
+    - 192.168.15.155
+    - 192.168.15.156
+- type: http
+  region: region2
+  target:
+    - http://www.google.com
+    - http://www.baidu.com

@@ -1,0 +1,91 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: infraops-agent-config
+data:
+  agent.yaml: |
+    RPCServerAddress: "infraops-server:8085"
+    HTTPAddress: ":8087"
+    log: false
+    logLevel: INFO
+    collectAndReport: false
+    logStrategies: []
+    task:
+      metaDir: /var/lib/infraops/meta
+      interval: 2
+    region: "${INFRAOPS_REGION}"
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: infraops-agent
+spec:
+  selector:
+    matchLabels:
+      app: infraops-agent
+  template:
+    metadata:
+      labels:
+        app: infraops-agent
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8087"
+        prometheus.io/path: /metrics
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 65532
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+        - name: agent
+          image: infraops-agent:latest
+          imagePullPolicy: IfNotPresent
+          args:
+            - -configFile=/etc/infraops/agent.yaml
+          env:
+            - name: INFRAOPS_REGION
+              value: cluster
+          ports:
+            - name: metrics
+              containerPort: 8087
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/infraops
+              readOnly: true
+            - name: task-meta
+              mountPath: /var/lib/infraops/meta
+      volumes:
+        - name: config
+          configMap:
+            name: infraops-agent-config
+        - name: task-meta
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: infraops-agent
+spec:
+  clusterIP: None
+  selector:
+    app: infraops-agent
+  ports:
+    - name: metrics
+      port: 8087
+      targetPort: metrics
