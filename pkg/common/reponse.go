@@ -30,6 +30,7 @@ func JsonResp(c *gin.Context, arg ...interface{}) (err error) {
 			body = RespJson{
 				Message: message.(string),
 			}
+			c.JSON(http.StatusOK, body)
 		default:
 			c.JSON(http.StatusOK, message)
 			body = message

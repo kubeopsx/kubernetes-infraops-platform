@@ -183,12 +183,7 @@ func StreeAdd(req *common.NodeRequest, logger log.Logger) error {
 				level.Info(logger).Log("msg", "g_p_a", "path", req.Node)
 				return nil
 			}
-			_, err = nodeP.Add()
-			if err != nil {
-				err = fmt.Errorf("add p failed; g exist %v", req.Node)
-				return err
-			}
-			level.Info(logger).Log("msg", "add p success", "path", req.Node)
+			return nil
 		}
 
 		// 说明 p 不存在，插入 p 和 a
@@ -348,6 +343,9 @@ func StreeQuery(req *common.NodeRequest, logger log.Logger) (result []string) {
 	case 4:
 		// 直接查询g.p.a是否存在
 		gpas := strings.Split(req.Node, ".")
+		if len(gpas) != 3 {
+			return
+		}
 		g, p, a := gpas[0], gpas[1], gpas[2]
 		nodeG := &Stree{
 			Level:    1,

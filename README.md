@@ -47,6 +47,37 @@ probe:
 
 Every sample is exposed centrally through `infraops_probe_value` with protocol, worker, address, and region labels. Existing ICMP and HTTP metric names remain available; TCP, DNS, and TLS also expose protocol-specific metrics. Agents expose their latest local samples through `infraops_agent_probe_value`.
 
+## Prometheus HTTP service discovery
+
+The server exposes resources mounted in the service tree as Prometheus HTTP SD target groups:
+
+```yaml
+scrape_configs:
+  - job_name: infraops-service-tree
+    http_sd_configs:
+      - url: http://infraops-server:8086/apis/v1/prometheus/http-sd
+        refresh_interval: 30s
+```
+
+`/http-sd` is retained as a compatibility alias for the original standalone `http-sd` project. Both endpoints return only `resource_host` records mounted at a complete `group.product.app` path. The default target is each private address on port `9100`.
+
+The discovery URL accepts `service_tree`, `group`, `product`, `app`, `region`, `status`, `network=private|public|all`, `port`, and `job` query parameters. `service_tree` uses the complete `group.product.app` form and cannot be mixed with its three individual filters.
+
+Host tags can override the scrape settings:
+
+```json
+{
+  "prometheus.io/scrape": "true",
+  "prometheus.io/port": "9200",
+  "prometheus.io/path": "/metrics",
+  "prometheus.io/scheme": "http",
+  "prometheus.io/job": "node-exporter",
+  "cluster": "production-a"
+}
+```
+
+Non-control tags are exported with a `tag_` prefix. Service-tree ownership, resource identity, region, provider, instance type, and availability zone are included as target labels.
+
 ## Build
 
 ```bash

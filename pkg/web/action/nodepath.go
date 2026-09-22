@@ -36,12 +36,18 @@ func NodePathQuery(c *gin.Context) {
 		return
 	}
 	logger := c.MustGet("logger").(log.Logger)
-	if input.QueryType == 3 {
-		if len(strings.Split(input.Node, ".")) != 2 {
-			common.JsonResp(c, 400, fmt.Errorf("path should be a.b:%v", input.Node))
-			return
-		}
-		result := model.StreeAdd(&input, logger)
-		common.JsonResp(c, result)
+	if input.QueryType < 1 || input.QueryType > 5 {
+		common.JsonResp(c, 400, fmt.Errorf("query_type must be between 1 and 5"))
+		return
 	}
+	parts := strings.Split(input.Node, ".")
+	if input.QueryType == 3 && len(parts) != 2 {
+		common.JsonResp(c, 400, fmt.Errorf("path should be a.b:%v", input.Node))
+		return
+	}
+	if input.QueryType == 4 && len(parts) != 3 {
+		common.JsonResp(c, 400, fmt.Errorf("path should be a.b.c:%v", input.Node))
+		return
+	}
+	common.JsonResp(c, model.StreeQuery(&input, logger))
 }

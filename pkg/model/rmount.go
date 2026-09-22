@@ -20,22 +20,24 @@ func CheckResources(resource string) bool {
 
 func ResourceMount(req *common.ResourceMountRequest, logger log.Logger) (int64, error) {
 	gpa := strings.Split(req.TargetPath, ".")
-	if len(gpa) < 3 {
+	if len(gpa) != 3 || gpa[0] == "" || gpa[1] == "" || gpa[2] == "" {
 		return 0, fmt.Errorf("invalid target path %s", req.TargetPath)
 	}
-	g, p, a := gpa[0], gpa[1], gpa[2]
-	ids := ""
-	for _, id := range req.ResourceIds {
-		ids += fmt.Sprintf("%d", id)
+	if len(req.ResourceIds) == 0 {
+		return 0, fmt.Errorf("no resource IDs provided")
 	}
-	raw := fmt.Sprintf(`update %s set stree_group='%s', stree_product='%s', stree_app='%s' where id in (%s)`,
-		req.ResourceType,
-		g,
-		p,
-		a,
-		ids)
-	level.Info(logger).Log("msg", "resource mount sql", "raw", raw)
-	res, err := db.Database["stree"].Exec(raw)
+	g, p, a := gpa[0], gpa[1], gpa[2]
+	placeholders := make([]string, 0, len(req.ResourceIds))
+	args := []interface{}{g, p, a}
+	for _, id := range req.ResourceIds {
+		placeholders = append(placeholders, "?")
+		args = append(args, id)
+	}
+	raw := fmt.Sprintf(`UPDATE %s SET stree_group=?, stree_product=?, stree_app=? WHERE id IN (%s)`,
+		req.ResourceType, strings.Join(placeholders, ","))
+	level.Info(logger).Log("msg", "resource mount", "resource_type", req.ResourceType, "resource_count", len(req.ResourceIds), "g.p.a", req.TargetPath)
+	execArgs := append([]interface{}{raw}, args...)
+	res, err := db.Database["stree"].Exec(execArgs...)
 	if err != nil {
 		return 0, err
 	}

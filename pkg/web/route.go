@@ -6,11 +6,15 @@ import (
 )
 
 func route(route *gin.Engine) {
+	// Keep /http-sd compatible with the original standalone http-sd service.
+	route.GET("/http-sd", action.PrometheusHTTPServiceDiscovery)
+
 	api := route.Group("/apis/v1")
 	{
 		api.GET("/ping", func(context *gin.Context) {
 			context.String(200, "pong")
 		})
+		api.GET("/prometheus/http-sd", action.PrometheusHTTPServiceDiscovery)
 		api.POST("/node-path", action.NodePathAdd)
 		api.GET("/node-path", action.NodePathQuery)
 
